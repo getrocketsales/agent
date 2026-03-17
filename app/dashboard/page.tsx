@@ -1,121 +1,133 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
+
+interface Business {
+  id: string
+  name: string
+  business_type: string | null
+  target_city: string | null
+  target_state: string | null
+  status: string | null
+  plan: string | null
+}
+
+interface StatCardProps {
+  label: string
+  value: string | number
+  sub?: string
+  color?: string
+}
+
+function StatCard({ label, value, sub, color = '#8b4b94' }: StatCardProps) {
+  return (
+    <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs tracking-widest font-heading text-gray-400">{label}</p>
+          <p className="mt-1 text-3xl font-heading font-bold text-gray-900">{value}</p>
+          {sub && <p className="mt-1 text-xs text-gray-400 font-body">{sub}</p>}
+        </div>
+        <div className="w-2 h-8 rounded-full" style={{backgroundColor: color}}></div>
+      </div>
+    </div>
+  )
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
 
   const { data: businesses } = await supabase
     .from('businesses')
-    .select(`
-      id, name, slug, status, plan, business_type, target_city, target_state,
-      client_sites ( id, url, portal_subdomain )
-    `)
-    .order('name')
+    .select('id, name, business_type, target_city, target_state, status, plan')
+    .order('created_at', { ascending: false })
 
-  const { data: auditStats } = await supabase
-    .from('audits')
-    .select('ai_score, seo_score, geo_score')
-    .not('ai_score', 'is', null)
-
-  const avgAiScore = auditStats && auditStats.length > 0
-    ? Math.round(auditStats.reduce((a, b) => a + (b.ai_score || 0), 0) / auditStats.length)
-    : 0
-
-  const activeCount = businesses?.filter(b => b.status === 'active').length || 0
+  const allBusinesses: Business[] = businesses || []
+  const activeCount = allBusinesses.filter(b => b.status === 'active').length
+  const planCounts = allBusinesses.reduce((acc: Record<string, number>, b) => {
+    const plan = b.plan || 'basic'
+    acc[plan] = (acc[plan] || 0) + 1
+    return acc
+  }, {})
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-400 mt-1">Overview of all client accounts</p>
+      <div className="mb-8">
+        <p className="text-xs tracking-widest font-heading mb-1" style={{color: '#8b4b94'}}>AGENCY OVERVIEW</p>
+        <h1 className="text-3xl font-heading font-bold text-gray-900">DASHBOARD</h1>
+        <p className="text-gray-500 font-body mt-1">AI-powered visibility management for all your clients</p>
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Active Clients" value={activeCount} icon="" color="blue" />
-        <StatCard label="Avg AIRank Score" value={avgAiScore} icon="" color="orange" suffix="/100" />
-        <StatCard label="Total Pages Audited" value={auditStats?.length || 0} icon="" color="green" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard label="TOTAL CLIENTS" value={allBusinesses.length} sub="All managed businesses" color="#592b77" />
+        <StatCard label="ACTIVE CLIENTS" value={activeCount} sub="Currently active" color="#f37850" />
+        <StatCard label="PRO PLANS" value={planCounts['pro'] || 0} sub="Pro tier clients" color="#8b4b94" />
+        <StatCard label="BASIC PLANS" value={planCounts['basic'] || 0} sub="Basic tier clients" color="#fdc880" />
       </div>
 
-      {/* Clients grid */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Client Accounts</h2>
-          <Link
-            href="/dashboard/clients/new"
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition"
-          >
-            + Add Client
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {businesses?.map((biz) => (
-            <ClientCard key={biz.id} business={biz} />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function StatCard({ label, value, icon, color, suffix = '' }: {
-  label: string; value: number; icon: string; color: string; suffix?: string
-}) {
-  const colors: Record<string, string> = {
-    blue: 'bg-blue-500/10 text-blue-400',
-    orange: 'bg-orange-500/10 text-orange-400',
-    green: 'bg-green-500/10 text-green-400',
-  }
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-2xl">{icon}</span>
-        <span className={`text-xs font-medium px-2 py-1 rounded-full ${colors[color]}`}>
-          {label}
-        </span>
-      </div>
-      <p className="text-3xl font-bold text-white">{value}{suffix}</p>
-    </div>
-  )
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ClientCard({ business }: { business: any }) {
-  const statusColors: Record<string, string> = {
-    active: 'bg-green-500/10 text-green-400',
-    paused: 'bg-yellow-500/10 text-yellow-400',
-    churned: 'bg-red-500/10 text-red-400',
-  }
-  const site = business.client_sites?.[0]
-
-  return (
-    <Link href={`/dashboard/clients/${business.id}`}>
-      <div className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-5 transition cursor-pointer group">
-        <div className="flex items-start justify-between mb-3">
-          <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-            <span className="text-orange-400 font-bold text-sm">
-              {business.name.substring(0, 2).toUpperCase()}
-            </span>
+      {/* Recent clients */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="text-xs tracking-widest font-heading" style={{color: '#8b4b94'}}>CLIENT ROSTER</p>
+            <h2 className="font-heading font-bold text-gray-900 text-lg">RECENT CLIENTS</h2>
           </div>
-          <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[business.status] || statusColors.active}`}>
-            {business.status}
-          </span>
+          <a
+            href="/dashboard/clients"
+            className="text-xs font-heading tracking-wider px-4 py-2 rounded-lg text-white transition-all"
+            style={{background: 'linear-gradient(135deg, #592b77, #8b4b94)'}}
+          >
+            VIEW ALL
+          </a>
         </div>
-        <h3 className="font-semibold text-white group-hover:text-orange-400 transition mb-1">
-          {business.name}
-        </h3>
-        {site?.url && (
-          <p className="text-xs text-gray-500 truncate mb-3">{site.url}</p>
-        )}
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span className="capitalize">{business.plan} plan</span>
-          {business.target_city && (
-            <span> {business.target_city}{business.target_state ? `, ${business.target_state}` : ''}</span>
+        <div className="divide-y divide-gray-50">
+          {allBusinesses.slice(0, 6).map((business) => (
+            <div key={business.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-heading font-bold text-sm"
+                  style={{background: 'linear-gradient(135deg, #592b77, #8b4b94)'}}
+                >
+                  {business.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-heading font-bold text-gray-900">{business.name}</p>
+                  <p className="text-xs text-gray-400 font-body">
+                    {business.target_city && business.target_state
+                      ? `${business.target_city}, ${business.target_state}`
+                      : business.business_type || ''}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {business.plan && (
+                  <span className="text-xs font-heading tracking-wider px-2.5 py-1 rounded-full bg-purple-50 text-purple-700">
+                    {business.plan.toUpperCase()}
+                  </span>
+                )}
+                <span className={`inline-flex items-center gap-1.5 text-xs font-heading tracking-wider px-2.5 py-1 rounded-full ${
+                  business.status === 'active'
+                    ? 'bg-green-50 text-green-700'
+                    : business.status === 'paused'
+                    ? 'bg-yellow-50 text-yellow-700'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    business.status === 'active' ? 'bg-green-500' : business.status === 'paused' ? 'bg-yellow-500' : 'bg-gray-400'
+                  }`}></span>
+                  {(business.status || 'unknown').toUpperCase()}
+                </span>
+              </div>
+            </div>
+          ))}
+          {allBusinesses.length === 0 && (
+            <div className="px-6 py-12 text-center">
+              <p className="font-heading text-gray-400">NO CLIENTS YET</p>
+              <p className="text-sm text-gray-400 font-body mt-1">Add your first client to get started</p>
+            </div>
           )}
         </div>
       </div>
-    </Link>
+    </div>
   )
 }

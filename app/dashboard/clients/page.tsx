@@ -1,96 +1,135 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
+
+interface Business {
+  id: string
+  name: string
+  slug: string | null
+  business_type: string | null
+  target_city: string | null
+  target_state: string | null
+  status: string | null
+  plan: string | null
+  created_at: string
+}
 
 export default async function ClientsPage() {
   const supabase = await createClient()
 
   const { data: businesses } = await supabase
     .from('businesses')
-    .select(`
-      id, name, slug, status, plan, business_type, target_city, target_state, created_at,
-      client_sites ( id, url, portal_subdomain )
-    `)
-    .order('name')
+    .select('id, name, slug, business_type, target_city, target_state, status, plan, created_at')
+    .order('created_at', { ascending: false })
+
+  const allBusinesses: Business[] = businesses || []
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div>
+      {/* Page header */}
+      <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Clients</h1>
-          <p className="text-gray-400 mt-1">{businesses?.length || 0} total accounts</p>
+          <p className="text-xs tracking-widest font-heading mb-1" style={{color: '#8b4b94'}}>CLIENT MANAGEMENT</p>
+          <h1 className="text-3xl font-heading font-bold text-gray-900">ALL CLIENTS</h1>
+          <p className="text-gray-500 font-body mt-1">{allBusinesses.length} managed {allBusinesses.length === 1 ? 'client' : 'clients'}</p>
         </div>
-        <Link
-          href="/dashboard/clients/new"
-          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition"
+        <button
+          className="text-sm font-heading tracking-wider px-5 py-2.5 rounded-lg text-white transition-all flex items-center gap-2"
+          style={{background: 'linear-gradient(135deg, #592b77, #8b4b94)'}}
         >
-          + Add Client
-        </Link>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          ADD CLIENT
+        </button>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-800">
-              <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Client</th>
-              <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Website</th>
-              <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Location</th>
-              <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Plan</th>
-              <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-800">
-            {businesses?.map((biz) => (
-              <tr key={biz.id} className="hover:bg-gray-800/50 transition">
-                <td className="px-5 py-4">
-                  <Link href={`/dashboard/clients/${biz.id}`} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-orange-400 font-bold text-xs">
-                        {biz.name.substring(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-white hover:text-orange-400 transition">{biz.name}</p>
-                      {biz.business_type && <p className="text-xs text-gray-500 capitalize">{biz.business_type}</p>}
-                    </div>
-                  </Link>
-                </td>
-                <td className="px-5 py-4">
-                  <a
-                    href={biz.client_sites?.[0]?.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-gray-400 hover:text-white transition truncate max-w-[180px] block"
-                  >
-                    {biz.client_sites?.[0]?.url || ''}
-                  </a>
-                </td>
-                <td className="px-5 py-4 text-sm text-gray-400">
-                  {biz.target_city ? `${biz.target_city}${biz.target_state ? `, ${biz.target_state}` : ''}` : ''}
-                </td>
-                <td className="px-5 py-4">
-                  <span className="text-xs font-medium text-gray-300 capitalize">{biz.plan}</span>
-                </td>
-                <td className="px-5 py-4">
-                  <StatusBadge status={biz.status} />
-                </td>
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left px-6 py-3 text-xs font-heading tracking-widest text-gray-400">CLIENT</th>
+                <th className="text-left px-6 py-3 text-xs font-heading tracking-widest text-gray-400">LOCATION</th>
+                <th className="text-left px-6 py-3 text-xs font-heading tracking-widest text-gray-400">TYPE</th>
+                <th className="text-left px-6 py-3 text-xs font-heading tracking-widest text-gray-400">PLAN</th>
+                <th className="text-left px-6 py-3 text-xs font-heading tracking-widest text-gray-400">STATUS</th>
+                <th className="text-left px-6 py-3 text-xs font-heading tracking-widest text-gray-400">SINCE</th>
+                <th className="px-6 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {allBusinesses.map((business) => (
+                <tr key={business.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-heading font-bold text-sm flex-shrink-0"
+                        style={{background: 'linear-gradient(135deg, #592b77, #8b4b94)'}}
+                      >
+                        {business.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-heading font-bold text-gray-900 text-sm">{business.name}</p>
+                        {business.slug && <p className="text-xs text-gray-400 font-body">{business.slug}</p>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 font-body">
+                    {business.target_city && business.target_state
+                      ? `${business.target_city}, ${business.target_state}`
+                      : ''}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 font-body capitalize">
+                    {business.business_type || ''}
+                  </td>
+                  <td className="px-6 py-4">
+                    {business.plan ? (
+                      <span className="text-xs font-heading tracking-wider px-2.5 py-1 rounded-full bg-purple-50 text-purple-700">
+                        {business.plan.toUpperCase()}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-sm"></span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-heading tracking-wider px-2.5 py-1 rounded-full ${
+                      business.status === 'active'
+                        ? 'bg-green-50 text-green-700'
+                        : business.status === 'paused'
+                        ? 'bg-yellow-50 text-yellow-700'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        business.status === 'active' ? 'bg-green-500' : business.status === 'paused' ? 'bg-yellow-500' : 'bg-gray-400'
+                      }`}></span>
+                      {(business.status || 'unknown').toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-400 font-body">
+                    {new Date(business.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
+                  <td className="px-6 py-4">
+                    <a
+                      href={`/dashboard/clients/${business.id}`}
+                      className="text-xs font-heading tracking-wider text-gray-400 hover:text-purple-700 transition-colors"
+                    >
+                      VIEW 
+                    </a>
+                  </td>
+                </tr>
+              ))}
+              {allBusinesses.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <p className="font-heading text-gray-400">NO CLIENTS YET</p>
+                    <p className="text-sm text-gray-400 font-body mt-1">Add your first client to get started</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    active: 'bg-green-500/10 text-green-400',
-    paused: 'bg-yellow-500/10 text-yellow-400',
-    churned: 'bg-red-500/10 text-red-400',
-  }
-  return (
-    <span className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full capitalize ${map[status] || map.active}`}>
-      {status}
-    </span>
   )
 }
