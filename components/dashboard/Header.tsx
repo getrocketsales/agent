@@ -14,7 +14,7 @@ export default function Header({ user, onMenuOpen }: HeaderProps) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/portal/agency/login')
     router.refresh()
   }
 
