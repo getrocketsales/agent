@@ -89,3 +89,55 @@ Converted the /about page from a fully static/hardcoded Next.js page to a dynami
 - /services (main + 4 sub-pages: ai-visibility, geo-optimization, aeo-optimization, seo-authority)
 - /industries (main + 4 sub-pages: financial-services, legal, healthcare, home-services)
 - /blog and /blog/[slug] (currently using WordPress API)
+
+---
+
+## Batch 3: /services, /industries, /blog Conversion (March 19, 2026)
+
+### /services Page (main)
+- Inserted page data into Supabase pages table (slug: 'services')
+- Content structure: hero (badge, heading, description), services[] (slug, name, tagline, description, icon, color), stack (heading, description), cta (button_text, button_url, secondary_text, secondary_url)
+- Rewrote page to fetch via getPageData('services'), render services grid and stack section from DB
+
+### /services Sub-Pages (4 pages)
+- ai-visibility (slug: 'services-ai-visibility'): hero, features (heading, description, items[]), stats[], why (heading, description), faqs[], cta
+- geo-optimization (slug: 'services-geo-optimization'): hero, features, faqs[], cta
+- seo-authority (slug: 'services-seo-authority'): hero, features, cta (no faqs)
+- aeo-optimization (slug: 'services-aeo-optimization'): hero, features, faqs[], cta
+- All 4 rewritten to fetch via getPageData() with color-themed layouts
+
+### /industries Page (main)
+- Inserted page data (slug: 'industries')
+- Content structure: hero (badge, heading, description), industries[] (slug, name, tagline, description, icon, color), cta
+- Rewrote to fetch from DB and render industries grid
+
+### /industries Sub-Pages (4 pages)
+- financial-services (slug: 'industries-financial-services'): hero (with color), painPoints[], cta
+- healthcare (slug: 'industries-healthcare'): same structure
+- home-services (slug: 'industries-home-services'): same structure
+- legal (slug: 'industries-legal'): same structure
+- All 4 rewritten with industry-specific color themes
+
+### /blog and /blog/[slug] (WordPress API)
+- Already fetching from WordPress API (https://getrocketsales.org/wp-json/wp/v2)
+- Added `export const revalidate = 3600` to both pages for ISR consistency
+- No Supabase migration needed  WordPress remains the data source
+
+### Files Modified
+- app/(site)/services/page.tsx  Rewritten to fetch from Supabase
+- app/(site)/services/ai-visibility/page.tsx  Rewritten
+- app/(site)/services/geo-optimization/page.tsx  Rewritten
+- app/(site)/services/seo-authority/page.tsx  Rewritten
+- app/(site)/services/aeo-optimization/page.tsx  Rewritten
+- app/(site)/industries/page.tsx  Rewritten
+- app/(site)/industries/financial-services/page.tsx  Rewritten
+- app/(site)/industries/healthcare/page.tsx  Rewritten
+- app/(site)/industries/home-services/page.tsx  Rewritten
+- app/(site)/industries/legal/page.tsx  Rewritten
+- app/(site)/blog/page.tsx  Added revalidate export
+- app/(site)/blog/[slug]/page.tsx  Added revalidate export
+
+### Migration Complete
+All pages now fetch from either Supabase (site pages) or WordPress API (blog):
+- Supabase pages: about, contact, locations, pricing, services, services/*, industries, industries/*
+- WordPress pages: blog, blog/[slug]
